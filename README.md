@@ -68,7 +68,7 @@ Links below are taken from the configured Git remotes in the corresponding check
 | [`libc-os2/`](../libc-os2/) | [`https://github.com/OS2DLLS/libc-os2.git`](https://github.com/OS2DLLS/libc-os2.git) |
 | [`openssl-os2/`](../openssl-os2/) | [`https://github.com/OS2DLLS/openssl-os2-3.6.5.git`](https://github.com/OS2DLLS/openssl-os2-3.6.5.git) |
 | [`qt6-base-os2/`](../qt6-base-os2/) | [`https://github.com/OS2DLLS/qt6-base-os2.git`](https://github.com/OS2DLLS/qt6-base-os2.git) (mirror); [upstream](https://github.com/andreaspeters/qt6-base-os2) |
-| [`qt6-serialport-os2/`](../qt6-serialport-os2/) | [`ssh://git@gitea.aventer.internal:2222/andreas/qt6-serialport-os2.git`](ssh://git@gitea.aventer.internal:2222/andreas/qt6-serialport-os2.git) |
+| [`qt6-serialport-os2/`](../qt6-serialport-os2/) | [`https://github.com/OS2DLLS/qt6-serialport-os2.git`](https://github.com/OS2DLLS/qt6-serialport-os2.git) |
 
 ## Host Qt and target Qt are separate
 
