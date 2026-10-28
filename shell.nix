@@ -75,7 +75,8 @@ pkgs.mkShell {
     export OS2EMX_SYSROOT="$OS2EMX_PREFIX/i686-pc-os2-emx"
     export OS2EMX_TARGET="i686-pc-os2-emx"
     export OS2EMX_BUILD_ROOT="/data/build-nix"
-    export OS2EMX_INSTALL_ROOT="/data"
+    export OS2EMX_INSTALL_ROOT="/data/os2emx"
+    export OS2EMX_HOST_INSTALL_ROOT="/data"
     export OS2EMX_TOOLCHAIN_SOURCE_ROOT="/data/cross-os2emx"
     export OS2EMX_CMAKE_TOOLCHAIN_FILE="$OS2EMX_TOOLCHAIN_SOURCE_ROOT/cmake/os2emx-default.cmake"
 
@@ -113,7 +114,7 @@ pkgs.mkShell {
 
     export OS2EMX_CC="$OS2EMX_PREFIX/bin/$OS2EMX_TARGET-gcc"
     export OS2EMX_CXX="$OS2EMX_PREFIX/bin/$OS2EMX_TARGET-g++"
-    export OS2EMX_AR="$OS2EMX_PREFIX/bin/emxomfar"
+    export OS2EMX_AR="$OS2EMX_PREFIX/$OS2EMX_TARGET/bin/emxomfar"
     export OS2EMX_RANLIB=:
     export OS2EMX_STRIP="$OS2EMX_PREFIX/bin/emxomfstrip"
 
@@ -177,7 +178,8 @@ pkgs.mkShell {
     else
       echo "  cmake:   host/native"
     fi
-    echo "  install root: $OS2EMX_INSTALL_ROOT"
+    echo "  target install root: $OS2EMX_INSTALL_ROOT"
+    echo "  host install root: $OS2EMX_HOST_INSTALL_ROOT"
     echo "  build:   $OS2EMX_BUILD_ROOT"
   '';
 }

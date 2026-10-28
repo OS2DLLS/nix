@@ -77,7 +77,7 @@ Links below are taken from the configured Git remotes in the corresponding check
 
 ## Host Qt and target Qt are separate
 
-For Qt module cross-builds, `/data/qt6-host` supplies Linux-executable host tools and host CMake packages, while `/data/qt6-os2-install` supplies OS/2 target libraries and target CMake packages. Neither installation substitutes for the other. Keep their paths role-specific in CMake configuration and verify the selected packages in the CMake cache.
+For Qt module cross-builds, `/data/qt6-host` supplies Linux-executable host tools and host CMake packages, while `/data/os2emx` supplies OS/2 target libraries and target CMake packages. Neither installation substitutes for the other. Keep their paths role-specific in CMake configuration and verify the selected packages in the CMake cache.
 
 ## OpenSSL paths
 
