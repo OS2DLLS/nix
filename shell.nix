@@ -73,6 +73,7 @@ pkgs.mkShell {
 
   shellHook = ''
     # Preserve the Nix host .pc search path before target mode replaces it.
+    export OS2EMX_BUILD_MODE=target
     export OS2EMX_HOST_PKG_CONFIG_PATH="''${PKG_CONFIG_PATH:-}"
     export OS2EMX_PREFIX="/data/os2emx"
     export OS2EMX_SYSROOT="$OS2EMX_PREFIX/i686-pc-os2-emx"
