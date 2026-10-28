@@ -76,7 +76,7 @@ pkgs.mkShell {
     export OS2EMX_TARGET="i686-pc-os2-emx"
     export OS2EMX_BUILD_ROOT="/data/build-nix"
     export OS2EMX_INSTALL_ROOT="/data/os2emx"
-    export OS2EMX_HOST_INSTALL_ROOT="/data"
+    export OS2EMX_HOST_INSTALL_ROOT="/data/qt6-host"
     export OS2EMX_TOOLCHAIN_SOURCE_ROOT="/data/cross-os2emx"
     export OS2EMX_CMAKE_TOOLCHAIN_FILE="$OS2EMX_TOOLCHAIN_SOURCE_ROOT/cmake/os2emx-default.cmake"
 

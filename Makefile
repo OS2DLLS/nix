@@ -3,15 +3,15 @@
 .DEFAULT_GOAL := all
 .NOTPARALLEL:
 
-ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST)))/..)
+ROOT := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 
 # This Makefile is run from the already-entered /data/shell.nix environment.
 # Host-only stages clear target compiler flags; no nested nix-shell is started.
-HOST_ENV = env -u CMAKE_TOOLCHAIN_FILE -u CC -u CXX -u AR -u ARFLAGS -u RANLIB -u STRIP -u CFLAGS -u CXXFLAGS -u LDFLAGS -u LIBS -u PKG_CONFIG_SYSROOT_DIR -u PKG_CONFIG_LIBDIR -u PKG_CONFIG_PATH -u PKG_CONFIG_ALLOW_SYSTEM_CFLAGS -u PKG_CONFIG_ALLOW_SYSTEM_LIBS -u OPENSSL_ROOT_DIR OS2EMX_BUILD_MODE=host
+HOST_ENV = env -u CMAKE_TOOLCHAIN_FILE -u CC -u CXX -u AR -u ARFLAGS -u RANLIB -u STRIP -u CFLAGS -u CXXFLAGS -u LDFLAGS -u LIBS -u PKG_CONFIG_SYSROOT_DIR -u PKG_CONFIG_LIBDIR -u PKG_CONFIG_PATH -u PKG_CONFIG_ALLOW_SYSTEM_CFLAGS -u PKG_CONFIG_ALLOW_SYSTEM_LIBS -u OPENSSL_ROOT_DIR OS2EMX_BUILD_MODE=host PKG_CONFIG_PATH="$(OS2EMX_HOST_PKG_CONFIG_PATH)"
 
-.PHONY: all preflight host-preflight cross-os2emx libc-os2 libcx openssl qt-host qt-base qt-serialport libb2 libb2-os2
+.PHONY: all preflight host-preflight cross-os2emx libc-os2 libcx openssl qt-host qt-base qt-serialport libb2-os2 libolm
 
-all: preflight cross-os2emx libc-os2 libcx libb2-os2 openssl libb2 qt-host qt-base qt-serialport
+all: preflight cross-os2emx libc-os2 libcx libb2-os2 openssl qt-host qt-base qt-serialport libolm
 
 preflight:
 	@test "$(OS2EMX_BUILD_MODE)" = target
@@ -73,15 +73,15 @@ libcx: libc-os2
 # The target libb2 package is distinct from the native libb2 needed by qt-host.
 # Keep the target archive and headers in the common OS/2 prefix.
 libb2-os2: cross-os2emx
-	@set -eu; b="$(OS2EMX_BUILD_ROOT)/libb2-os2"; p="$(OS2EMX_INSTALL_ROOT)"; \
 	  cmake -S "$(ROOT)/libb2" -B "$$b" -G Ninja \
 	    -DCMAKE_TOOLCHAIN_FILE="$(ROOT)/libb2/cmake/os2emx-toolchain.cmake" \
-	    -DCMAKE_INSTALL_PREFIX="$$p" -DCMAKE_BUILD_TYPE=Release \
+	    -DCMAKE_INSTALL_PREFIX="$(OS2EMX_INSTALL_ROOT)" -DCMAKE_BUILD_TYPE=Release \
 	    -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTING=OFF -DLIBB2_ENABLE_OPENMP=OFF; \
-	  cmake --build "$$b" --parallel 2; \
-	  cmake --install "$$b"; \
-	  test -s "$$p/lib/libb2.a"; test -s "$$p/include/blake2.h"; \
-	  test -s "$$p/lib/pkgconfig/libb2.pc"
+	  cmake --build "$(OS2EMX_BUILD_ROOT)/libb2-os2" --parallel 2
+	  cmake --install "$(OS2EMX_BUILD_ROOT)/libb2-os2"
+	  test -s "$(OS2EMX_INSTALL_ROOT)p/lib/b2.lib"; test -s "$(OS2EMX_INSTALL_ROOT)/include/blake2.h";
+	  test -s "$(OS2EMX_INSTALL_ROOT)p/lib/pkgconfig/libb2.pc";
+	  "$(OS2EMX_AR)" t "$(OS2EMX_INSTALL_ROOT)/lib/b2.lib" >/dev/null
 
 # OpenSSL's checked-in OS2-EMX Configure target is built out-of-tree and staged
 # under the target sysroot, as documented in openssl-os2/NOTES-OS2.md.
@@ -99,55 +99,38 @@ openssl: libcx
 	  test -s "$(OS2EMX_SYSROOT)/lib/crypto3.dll"; \
 	  file "$(OS2EMX_SYSROOT)/lib/ssl3.dll" "$(OS2EMX_SYSROOT)/lib/crypto3.dll"
 
-# Qt's native build selects system libb2; build and test that host dependency
-# separately from the OS/2 target, which uses Qt's bundled BLAKE2 implementation.
-libb2: host-preflight
-	@set -eu; b="$(OS2EMX_BUILD_ROOT)/libb2-host"; p="$(OS2EMX_HOST_INSTALL_ROOT)/libb2-host"; \
-	  $(HOST_ENV) cmake -S "$(ROOT)/libb2" -B "$$b" \
-	    -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$$p" -DCMAKE_INSTALL_LIBDIR=lib \
-	    -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTING=ON -DLIBB2_ENABLE_OPENMP=OFF \
-	    -DCMAKE_POSITION_INDEPENDENT_CODE=ON; \
-	  $(HOST_ENV) cmake --build "$$b" --parallel 2; \
-	  for test in blake2s-test blake2b-test blake2sp-test blake2bp-test; do $(HOST_ENV) "$$b/$$test"; done; \
-	  $(HOST_ENV) cmake --install "$$b"; \
-	  test -s "$$p/lib/libb2.a"; test -s "$$p/include/blake2.h"; \
-	  test -s "$$p/lib/pkgconfig/libb2.pc"; \
-	  $(HOST_ENV) PKG_CONFIG_PATH="$$p/lib/pkgconfig" "$(OS2EMX_HOST_PKG_CONFIG)" --modversion libb2
-
-# Native Qt tools are built and installed separately from the OS/2 Qt target.
-qt-host: libb2
-	@set -eu; b="$(OS2EMX_BUILD_ROOT)/qt6-base-host-libb2-ninja"; p="$(OS2EMX_HOST_INSTALL_ROOT)/qt6-host"; l="$(OS2EMX_HOST_INSTALL_ROOT)/libb2-host"; \
-	  $(HOST_ENV) PKG_CONFIG_PATH="$$l/lib/pkgconfig" cmake -S "$(ROOT)/qt6-base-os2" -B "$$b" \
-	    -DCMAKE_INSTALL_PREFIX="$$p" -DCMAKE_BUILD_TYPE=Release \
-	    -DPKG_CONFIG_EXECUTABLE="$(OS2EMX_HOST_PKG_CONFIG)" -DINPUT_libb2=system \
-	    -DQT_BUILD_TESTS=OFF -DQT_BUILD_EXAMPLES=OFF -DQT_BUILD_BENCHMARKS=OFF; \
-	  $(HOST_ENV) cmake --build "$$b" --parallel 2; \
-	  $(HOST_ENV) cmake --install "$$b"; \
-	  test -x "$$p/bin/moc"; test -x "$$p/bin/rcc"; test -x "$$p/bin/uic"
-
 # QtSetup.cmake derives the OS/2 install prefix from OS2EMX_INSTALL_ROOT; use
 # a fresh build tree so the default is exercised rather than a stale cache.
-qt-base: openssl qt-host
-	@set -eu; b="$(OS2EMX_BUILD_ROOT)/qt6-base-os2-os2emx-ninja"; p="$(OS2EMX_INSTALL_ROOT)"; h="$(OS2EMX_HOST_INSTALL_ROOT)/qt6-host"; \
-	  cmake -S "$(ROOT)/qt6-base-os2" -B "$$b" \
-	    -DCMAKE_TOOLCHAIN_FILE="$(ROOT)/qt6-base-os2/cmake/qt6-os2.cmake" \
-	    -DQT_HOST_PATH="$$h" -DOPENSSL_ROOT_DIR="$(OS2EMX_SYSROOT)" \
-	    -DINPUT_openssl=runtime -DCMAKE_BUILD_TYPE=Release; \
-	  cmake --build "$$b" --parallel 2; cmake --install "$$b"; \
-	  test -s "$$p/bin/Qt6Core.dll"; test -s "$$p/bin/Qt6Network.dll"
+qt6: 
+	cmake -S "$(ROOT)/qt6-base-os2" -B "$(OS2EMX_BUILD_ROOT)/build-qt6" \
+	  -DCMAKE_TOOLCHAIN_FILE="$(ROOT)/qt6-base-os2/cmake/qt6-os2.cmake" -DQT_HOST_PATH="$(OS2EMX_INSTALL_ROOT)" \
+	  -DOPENSSL_ROOT_DIR="$(OS2EMX_SYSROOT)" \
+	  -DOS2EMX_PREFIX="$(OS2EMX_PREFIX)" -DOS2EMX_TARGET="$(OS2EMX_TARGET)" \
+	  -DINPUT_openssl=runtime -DCMAKE_BUILD_TYPE=Release
+	cmake --build $(OS2EMX_BUILD_ROOT)/build-qt6 --parallel 2; cmake --install "$(OS2EMX_BUILD_ROOT)/build-qt6";
+	
+	
 
 # Build the module against the installed OS/2 Qt package and Linux host tools.
-qt-serialport: qt-base
-	@set -eu; p="$(OS2EMX_INSTALL_ROOT)"; h="$(OS2EMX_HOST_INSTALL_ROOT)/qt6-host"; b="$(OS2EMX_BUILD_ROOT)/qt6-serialport-os2-os2emx"; t="$$p/lib/cmake/Qt6/qt.toolchain.cmake"; \
-	  test -f "$$t"; \
-	  cmake -S "$(ROOT)/qt6-serialport-os2" -B "$$b" \
-	    -DCMAKE_TOOLCHAIN_FILE="$$t" -DQT_HOST_PATH="$$h" \
+qt-serialport: qt6
+	  cmake -S "$(ROOT)/qt6-serialport-os2" -B "$(OS2EMX_BUILD_ROOT)/qt6-serial" \
+	    -DCMAKE_TOOLCHAIN_FILE="$(ROOT)/qt6-base-os2/cmake/qt6-os2.cmake" -DQT_HOST_PATH="$(OS2EMX_INSTALL_ROOT)" \
 	    -DOS2EMX_PREFIX="$(OS2EMX_PREFIX)" -DOS2EMX_TARGET="$(OS2EMX_TARGET)" \
-	    -DCMAKE_INSTALL_PREFIX="$$p" \
-	    -DQt6_DIR="$$p/lib/cmake/Qt6" -DQt6Core_DIR="$$p/lib/cmake/Qt6Core" \
-	    -DQt6CoreTools_DIR="$$h/lib/cmake/Qt6CoreTools" \
-	    -DQt6GuiTools_DIR="$$h/lib/cmake/Qt6GuiTools" \
-	    -DQt6WidgetsTools_DIR="$$h/lib/cmake/Qt6WidgetsTools" \
-	    -DQT_BUILD_TESTS=OFF -DQT_BUILD_EXAMPLES=OFF; \
-	  cmake --build "$$b" --parallel 2; cmake --install "$$b"; \
-	  test -s "$$p/bin/Qt6SP.dll"
+	    -DCMAKE_INSTALL_PREFIX="$(OS2EMX_INSTALL_ROOT)" \
+	    -DQt6_DIR="$(OS2EMX_INSTALL_ROOT)/lib/cmake/Qt6" -DQt6Core_DIR="$(OS2EMX_INSTALL_ROOT)/lib/cmake/Qt6Core" \
+	    -DQt6CoreTools_DIR="$(OS2EMX_INSTALL_ROOT)/lib/cmake/Qt6CoreTools" \
+	    -DQt6GuiTools_DIR="$(OS2EMX_INSTALL_ROOT)/lib/cmake/Qt6GuiTools" \
+	    -DQt6WidgetsTools_DIR="$(OS2EMX_INSTALL_ROOT)/lib/cmake/Qt6WidgetsTools" \
+	    -DQt6BuildInternals_DIR="$(OS2EMX_INSTALL_ROOT)/lib/cmake/Qt6BuildInternals" \
+	    -DQT_BUILD_TESTS=OFF -DQT_BUILD_EXAMPLES=OFF
+	  cmake --build "$(OS2EMX_BUILD_ROOT)/qt6-serial" --parallel 2; cmake --install "$(OS2EMX_BUILD_ROOT)/qt6-serial"
+	  test -s "$(OS2EMX_PREFIX)/lib/Qt6SP.dll"
+
+libolm:
+	cmake -S "$(ROOT)/libolm" -B "$(OS2EMX_BUILD_ROOT)/libolm-os2" \
+	  -DCMAKE_TOOLCHAIN_FILE="$(OS2EMX_CMAKE_TOOLCHAIN_FILE)" \
+	  -DCMAKE_INSTALL_PREFIX="$(OS2EMX_INSTALL_ROOT)" \
+	  -DOLM_TESTS=OFF -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release	
+	cmake --build "$(OS2EMX_BUILD_ROOT)/libolm-os2" --target olm --parallel 2
+	cmake --install "$(OS2EMX_BUILD_ROOT)/libolm-os2"
+	test -s "$(OS2EMX_PREFIX)/lib/olm.dll"
